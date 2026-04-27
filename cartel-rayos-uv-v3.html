@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Rayos UV</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;700&family=Barlow:ital,wght@0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: #07000d;
+  font-family: 'Barlow Condensed', sans-serif;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════
+   APP SHELL
+══════════════════════════════ */
+.app {
+  width: 100%; height: 100%;
+  position: relative;
+}
+
+/* ══════════════════════════════
+   SCREENS
+══════════════════════════════ */
+.screen {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease, transform .35s ease;
+  transform: translateX(30px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(0);
+}
+
+.screen.exit {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* ══════════════════════════════
+   MAIN SCREEN — POSTER
+══════════════════════════════ */
+#main {
+  display: flex;
+  flex-direction: column;
+  background: #07000d;
+}
+
+.poster {
+  flex: 1;
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+  background: #07070f;
+}
+
+/* SKY */
+.sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    #0d0020 0%, #1a0040 20%, #3d0070 45%,
+    #7a00c8 65%, #f5a800 80%, #ff6b00 90%, #ff3300 100%);
+}
+
+/* SUN */
+.sun {
+  position: absolute;
+  top: 80px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #fff8e0 0%, #ffe566 30%, #ff9a00 60%, #ff4500 100%);
+  box-shadow: 0 0 30px 10px rgba(255,200,50,.6), 0 0 80px 30px rgba(255,140,0,.4), 0 0 160px 60px rgba(180,0,255,.3);
+  z-index: 2;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 30px 10px rgba(255,200,50,.6), 0 0 80px 30px rgba(255,140,0,.4), 0 0 160px 60px rgba(180,0,255,.3); }
+  50%      { box-shadow: 0 0 40px 15px rgba(255,200,50,.8), 0 0 100px 40px rgba(255,140,0,.55), 0 0 200px 80px rgba(180,0,255,.45); }
+}
+
+/* RAYS */
+.rays { position:absolute; top:80px; left:50%; transform:translateX(-50%); width:110px; height:110px; z-index:1; }
+.ray { position:absolute; top:50%; left:50%; height:2px; transform-origin:left center; border-radius:2px; opacity:0; animation:rayFlash 2.4s ease-in-out infinite; }
+.ray:nth-child(1){width:180px;transform:rotate(-70deg);background:linear-gradient(90deg,rgba(200,80,255,.7),transparent);animation-delay:0s}
+.ray:nth-child(2){width:160px;transform:rotate(-50deg);background:linear-gradient(90deg,rgba(160,60,255,.6),transparent);animation-delay:.3s}
+.ray:nth-child(3){width:150px;transform:rotate(-30deg);background:linear-gradient(90deg,rgba(200,100,255,.5),transparent);animation-delay:.6s}
+.ray:nth-child(4){width:200px;transform:rotate(20deg);background:linear-gradient(90deg,rgba(180,60,255,.7),transparent);animation-delay:.2s}
+.ray:nth-child(5){width:170px;transform:rotate(50deg);background:linear-gradient(90deg,rgba(220,80,255,.6),transparent);animation-delay:.5s}
+.ray:nth-child(6){width:160px;transform:rotate(80deg);background:linear-gradient(90deg,rgba(160,50,255,.5),transparent);animation-delay:.8s}
+.ray:nth-child(7){width:140px;transform:rotate(-90deg);background:linear-gradient(90deg,rgba(200,80,255,.4),transparent);animation-delay:1s}
+.ray:nth-child(8){width:190px;transform:rotate(110deg);background:linear-gradient(90deg,rgba(180,70,255,.6),transparent);animation-delay:.4s}
+@keyframes rayFlash{0%,100%{opacity:0}40%,60%{opacity:1}}
+
+.uv-badge {
+  position:absolute; top:52px; left:50%; transform:translateX(-50%);
+  font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:6px;
+  color:#e0aaff; text-shadow:0 0 10px rgba(200,100,255,.8); z-index:3;
+  animation:badgePulse 3s ease-in-out infinite; white-space:nowrap;
+}
+@keyframes badgePulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+.horizon { position:absolute; top:60%; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,#ff6b00 30%,#ff3300 50%,#ff6b00 70%,transparent); z-index:2; box-shadow:0 0 12px 3px rgba(255,100,0,.5); }
+.ground { position:absolute; top:60%; left:0; right:0; bottom:0; background:linear-gradient(180deg,#0d0008,#07000d); z-index:1; }
+
+/* FIGURE */
+.figure { position:absolute; bottom:160px; left:50%; transform:translateX(-50%); z-index:3; }
+.figure-head { width:26px; height:26px; border-radius:50%; background:#1a1a1a; margin:0 auto; box-shadow:0 0 12px rgba(180,80,255,.4); }
+.figure-body { width:20px; height:44px; background:#1a1a1a; margin:2px auto 0; border-radius:4px 4px 0 0; box-shadow:0 0 12px rgba(180,80,255,.3); }
+.figure-arms { position:absolute; top:34px; left:50%; transform:translateX(-50%); width:54px; height:7px; background:#1a1a1a; border-radius:4px; }
+.figure-legs { display:flex; gap:4px; margin:0 auto; width:28px; }
+.leg { width:12px; height:34px; background:#1a1a1a; border-radius:0 0 4px 4px; }
+
+/* ARROWS */
+.arrows { position:absolute; top:-55px; left:50%; transform:translateX(-50%); width:90px; height:55px; z-index:4; }
+.arrow { position:absolute; width:2px; background:linear-gradient(180deg,#bf5fff,#7b00ff); border-radius:2px; box-shadow:0 0 6px rgba(180,80,255,.7); animation:arrowDrop .8s ease-in infinite; }
+.arrow::after { content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); border-left:5px solid transparent; border-right:5px solid transparent; border-top:8px solid #bf5fff; }
+.arrow:nth-child(1){height:36px;left:18px;top:10px;animation-delay:0s}
+.arrow:nth-child(2){height:46px;left:50%;top:0;animation-delay:.25s}
+.arrow:nth-child(3){height:32px;left:68px;top:14px;animation-delay:.5s}
+@keyframes arrowDrop{0%{opacity:0;transform:translateY(-10px)}40%{opacity:1}80%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(5px)}}
+
+/* TOP STRIP */
+.top-strip {
+  position:absolute; top:0; left:0; right:0; height:34px;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:6;
+  display:flex; align-items:center; justify-content:space-between; padding:0 18px;
+  border-bottom:1px solid rgba(180,80,255,.2);
+}
+.top-label { font-size:9px; letter-spacing:4px; color:rgba(200,160,255,.55); text-transform:uppercase; }
+.uv-indicator { display:flex; gap:5px; align-items:center; }
+.ind-dot { width:6px; height:6px; border-radius:50%; animation:blink 1.5s ease-in-out infinite; }
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+.ind-label { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:2px; color:#ff4500; }
+
+/* HEADLINE PANEL */
+.headline-panel {
+  position:absolute; bottom:100px; left:0; right:0; z-index:5;
+  padding:0 22px;
+}
+.headline { font-family:'Bebas Neue',sans-serif; font-size:52px; line-height:.9; color:#fff; text-shadow:0 0 30px rgba(180,80,255,.5); }
+.headline span { color:#c060ff; text-shadow:0 0 20px rgba(180,80,255,.9); }
+.subline { font-size:12px; color:#c8a0e8; letter-spacing:2px; text-transform:uppercase; border-left:2px solid #7b00ff; padding-left:8px; margin-top:8px; }
+
+/* ══ NAV BUTTONS ══ */
+.nav-buttons {
+  position:absolute; bottom:0; left:0; right:0; z-index:10;
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:1px; background:#7b00ff22;
+  border-top:1px solid #7b00ff44;
+}
+
+.nav-btn {
+  background:#07000d;
+  border:none; outline:none; cursor:pointer;
+  padding:12px 10px 14px;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  position:relative; overflow:hidden;
+  transition:background .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn:active { background:#1a004a; }
+
+.nav-btn::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--c);
+  transform:scaleX(0); transform-origin:left;
+  transition:transform .25s ease;
+}
+.nav-btn:hover::before, .nav-btn:active::before { transform:scaleX(1); }
+
+.nav-btn-icon { font-size:20px; }
+.nav-btn-label {
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+  color:rgba(200,160,255,.7); text-align:center; line-height:1.2;
+}
+
+/* full-width last if odd */
+.nav-btn:last-child:nth-child(odd) { grid-column:1/-1; }
+
+/* ══════════════════════════════
+   INFO SCREENS — shared
+══════════════════════════════ */
+.info-screen {
+  background:#07000d;
+  display:flex; flex-direction:column;
+}
+
+/* Back bar */
+.back-bar {
+  display:flex; align-items:center; gap:10px;
+  padding:14px 18px;
+  border-bottom:1px solid rgba(120,0,255,.2);
+  position:sticky; top:0; z-index:20;
+  background:#07000d;
+  flex-shrink:0;
+}
+
+.back-btn {
+  background:none; border:none; cursor:pointer;
+  display:flex; align-items:center; gap:6px;
+  color:#a060e0; font-family:'Barlow Condensed',sans-serif;
+  font-size:14px; letter-spacing:2px; text-transform:uppercase;
+  padding:6px 10px; border-radius:4px;
+  border:1px solid rgba(120,0,255,.3);
+  transition:background .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.back-btn:active { background:rgba(120,0,255,.15); }
+
+.screen-label {
+  font-family:'Bebas Neue',sans-serif; font-size:11px;
+  letter-spacing:4px; color:rgba(160,100,255,.4); margin-left:auto;
+}
+
+/* Info body */
+.info-body { padding:24px 20px 40px; display:flex; flex-direction:column; gap:20px; flex:1; }
+
+/* Big graphic title */
+.gfx-title {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:48px; line-height:.9; letter-spacing:1px;
+  color:#fff; text-shadow:0 0 30px rgba(180,80,255,.4);
+}
+.gfx-title span { color:#c060ff; }
+.gfx-subtitle { font-size:12px; letter-spacing:2px; color:#9060b0; text-transform:uppercase; margin-top:6px; }
+
+/* Graphic hero */
+.gfx-hero {
+  width:100%; border-radius:10px; overflow:hidden;
+  position:relative; display:flex; align-items:center; justify-content:center;
+}
+
+/* Cards */
+.card {
+  background:rgba(120,0,255,.07);
+  border:1px solid rgba(120,0,255,.18);
+  border-radius:8px; padding:16px;
+  display:flex; flex-direction:column; gap:8px;
+}
+
+.card-title {
+  font-family:'Bebas Neue',sans-serif; font-size:16px;
+  letter-spacing:3px; text-transform:uppercase;
+}
+
+.card-text {
+  font-family:'Barlow',sans-serif; font-size:13px;
+  color:#b09acc; line-height:1.55;
+}
+
+/* Pill tag */
+.pill {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:'Barlow Condensed',sans-serif; font-size:11px;
+  letter-spacing:1.5px; text-transform:uppercase;
+  padding:3px 10px; border-radius:20px; align-self:flex-start;
+}
+
+/* Divider */
+.hdivider { height:1px; background:linear-gradient(90deg,#7b00ff44,transparent); }
+
+
+/* ══════════════════════════════
+   SCREEN: ¿QUÉ SON?
+══════════════════════════════ */
+.spectrum-bar {
+  height:16px; border-radius:8px; width:100%;
+  background:linear-gradient(90deg,#6600ff,#8800ff,#4488ff,#00ccff,#00ff88,#ffff00,#ffaa00,#ff0000);
+  position:relative; margin:8px 0;
+}
+.spectrum-marker {
+  position:absolute; top:-6px;
+  width:3px; height:28px; border-radius:2px;
+  background:#fff; box-shadow:0 0 8px rgba(255,255,255,.6);
+}
+.spectrum-marker::after {
+  content:attr(data-label);
+  position:absolute; top:30px; left:50%; transform:translateX(-50%);
+  font-family:'Barlow Condensed',sans-serif; font-size:9px;
+  letter-spacing:1px; color:#c0a0e0; white-space:nowrap;
+}
+
+.wave-visual {
+  height:80px; position:relative; overflow:hidden; border-radius:8px;
+  background:rgba(80,0,180,.1); border:1px solid rgba(120,0,255,.2);
+}
+
+.wave-svg { width:100%; height:100%; }
+
+
+/* ══════════════════════════════
+   SCREEN: TIPOS
+══════════════════════════════ */
+.type-big {
+  border-radius:10px; padding:18px 16px 20px;
+  display:flex; flex-direction:column; gap:10px;
+  position:relative; overflow:hidden;
+}
+.type-big::before {
+  content:''; position:absolute;
+  top:0; left:0; right:0; height:3px;
+  background:var(--c);
+}
+.type-big-letter {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:72px; line-height:.85; letter-spacing:2px;
+  color:var(--c); opacity:.15; position:absolute;
+  right:10px; top:8px;
+}
+.type-big-name {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:28px; letter-spacing:3px; color:var(--c);
+}
+.type-big-range {
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px; letter-spacing:2px; color:rgba(255,255,255,.35);
+  text-transform:uppercase;
+}
+.type-big-text {
+  font-family:'Barlow',sans-serif; font-size:13px;
+  color:#b09acc; line-height:1.5; max-width:85%;
+}
+.type-big-tag {
+  display:inline-block; font-family:'Barlow Condensed',sans-serif;
+  font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+  padding:3px 10px; border-radius:2px;
+  background:rgba(255,255,255,.06); color:var(--c);
+  border:1px solid var(--c); align-self:flex-start;
+  opacity:.7;
+}
+
+/* Ozone graphic */
+.ozone-visual {
+  border-radius:10px; overflow:hidden; position:relative; height:90px;
+  background:linear-gradient(180deg,#000010,#001030,#002060,#003090);
+  border:1px solid rgba(0,100,255,.2);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+}
+.ozone-layer {
+  position:absolute; top:50%; left:0; right:0;
+  transform:translateY(-50%); height:18px;
+  background:rgba(0,200,150,.15); border-top:1px solid rgba(0,200,150,.4);
+  border-bottom:1px solid rgba(0,200,150,.4);
+}
+.ozone-label {
+  font-family:'Barlow Condensed',sans-serif; font-size:11px;
+  letter-spacing:2px; color:rgba(0,220,170,.6); text-transform:uppercase;
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  white-space:nowrap;
+}
+.ozone-arrow {
+  font-size:22px; z-index:2;
+}
+
+
+/* ══════════════════════════════
+   SCREEN: EFECTOS
+══════════════════════════════ */
+.effect-card {
+  border-radius:8px; padding:14px 14px 16px;
+  border:1px solid rgba(255,60,0,.15);
+  background:rgba(255,40,0,.05);
+  display:flex; gap:12px; align-items:flex-start;
+}
+.effect-icon-big { font-size:28px; flex-shrink:0; }
+.effect-info {}
+.effect-name-big {
+  font-family:'Bebas Neue',sans-serif; font-size:18px;
+  letter-spacing:2px; color:#f0b090;
+}
+.effect-desc-sm {
+  font-family:'Barlow',sans-serif; font-size:12.5px;
+  color:#806878; line-height:1.45; margin-top:2px;
+}
+
+/* Skin layers diagram */
+.skin-visual {
+  border-radius:10px; overflow:hidden; height:80px;
+  position:relative; display:flex; flex-direction:column;
+  border:1px solid rgba(200,100,0,.2);
+}
+.skin-layer {
+  flex:1; display:flex; align-items:center; padding:0 14px;
+  font-family:'Barlow Condensed',sans-serif; font-size:11px;
+  letter-spacing:1.5px; text-transform:uppercase;
+}
+
+.positive-card {
+  background:rgba(0,200,100,.06);
+  border:1px solid rgba(0,200,100,.2);
+  border-radius:8px; padding:14px;
+  display:flex; gap:10px; align-items:center;
+}
+.positive-icon { font-size:28px; }
+.positive-text { font-family:'Barlow',sans-serif; font-size:12.5px; color:#70b090; line-height:1.45; }
+
+
+/* ══════════════════════════════
+   SCREEN: ESCALA
+══════════════════════════════ */
+.scale-item {
+  border-radius:8px; overflow:hidden;
+  border:1px solid rgba(255,255,255,.06);
+  display:flex; align-items:stretch;
+}
+.scale-color-bar {
+  width:8px; flex-shrink:0;
+  background:var(--c);
+}
+.scale-body {
+  flex:1; padding:12px 14px;
+  display:flex; flex-direction:column; gap:3px;
+}
+.scale-level-name {
+  font-family:'Bebas Neue',sans-serif; font-size:20px;
+  letter-spacing:2px; color:var(--c);
+}
+.scale-range-txt {
+  font-family:'Barlow Condensed',sans-serif; font-size:10px;
+  letter-spacing:2px; color:rgba(255,255,255,.3); text-transform:uppercase;
+}
+.scale-rec-txt {
+  font-family:'Barlow',sans-serif; font-size:12px;
+  color:#907090; line-height:1.4; margin-top:2px;
+}
+.scale-emoji { font-size:20px; flex-shrink:0; display:flex; align-items:center; padding-right:14px; }
+
+/* UV meter graphic */
+.uv-meter {
+  width:100%; height:50px; border-radius:8px; overflow:hidden; position:relative;
+  background:linear-gradient(90deg,#4caf50,#ffeb3b,#ff9800,#f44336,#9c27b0);
+}
+.uv-meter-needle {
+  position:absolute; top:0; bottom:0; width:3px;
+  background:#fff; border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.7);
+  left:82%; transition:left 1s ease;
+}
+.uv-meter-labels {
+  position:absolute; bottom:4px; left:0; right:0;
+  display:flex; justify-content:space-between;
+  padding:0 8px;
+}
+.uv-meter-label {
+  font-family:'Bebas Neue',sans-serif; font-size:10px;
+  color:rgba(0,0,0,.6); letter-spacing:1px;
+}
+
+
+/* ══════════════════════════════
+   SCREEN: DATOS CURIOSOS
+══════════════════════════════ */
+.fact-card {
+  border-radius:8px; padding:16px;
+  background:rgba(120,0,255,.07);
+  border:1px solid rgba(120,0,255,.18);
+  border-left:3px solid #7b00ff;
+  display:flex; gap:12px; align-items:flex-start;
+}
+.fact-num {
+  font-family:'Bebas Neue',sans-serif; font-size:36px;
+  line-height:1; color:rgba(120,0,255,.3); flex-shrink:0; width:32px;
+}
+.fact-content {}
+.fact-headline {
+  font-family:'Barlow Condensed',sans-serif; font-size:14px;
+  font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+  color:#d0a8f0; margin-bottom:4px;
+}
+.fact-detail {
+  font-family:'Barlow',sans-serif; font-size:12.5px;
+  color:#806898; line-height:1.45;
+}
+.fact-highlight { color:#c080ff; font-weight:bold; }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══════════ MAIN / POSTER ══════════ -->
+  <div class="screen active" id="main">
+    <div class="poster">
+      <div class="sky"></div>
+
+      <div class="rays">
+        <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+        <div class="ray"></div><div class="ray"></div><div class="ray"></div>
+        <div class="ray"></div><div class="ray"></div>
+      </div>
+
+      <div class="uv-badge">— U · V —</div>
+      <div class="sun"></div>
+      <div class="horizon"></div>
+      <div class="ground"></div>
+
+      <div class="figure">
+        <div class="arrows">
+          <div class="arrow"></div>
+          <div class="arrow"></div>
+          <div class="arrow"></div>
+        </div>
+        <div class="figure-head"></div>
+        <div style="position:relative;">
+          <div class="figure-arms"></div>
+          <div class="figure-body"></div>
+        </div>
+        <div class="figure-legs">
+          <div class="leg"></div>
+          <div class="leg"></div>
+        </div>
+      </div>
+
+      <div class="top-strip">
+        <span class="top-label">Radiación Ultravioleta</span>
+        <div class="uv-indicator">
+          <div class="ind-dot" style="background:#ff4500;"></div>
+          <span class="ind-label">Índice UV: Extremo</span>
+        </div>
+      </div>
+
+      <div class="headline-panel">
+        <div class="headline">PROTEGE<br>TU <span>PIEL</span></div>
+        <div class="subline">Los rayos UV no se ven — pero sí hacen daño</div>
+      </div>
+    </div>
+
+    <!-- NAV BUTTONS -->
+    <div class="nav-buttons">
+      <button class="nav-btn" style="--c:#c060ff" onclick="go('screen-que')">
+        <span class="nav-btn-icon">🔬</span>
+        <span class="nav-btn-label">¿Qué son<br>los rayos UV?</span>
+      </button>
+      <button class="nav-btn" style="--c:#ff9030" onclick="go('screen-tipos')">
+        <span class="nav-btn-icon">🌈</span>
+        <span class="nav-btn-label">Tipos de<br>Radiación UV</span>
+      </button>
+      <button class="nav-btn" style="--c:#ff4040" onclick="go('screen-efectos')">
+        <span class="nav-btn-icon">⚠️</span>
+        <span class="nav-btn-label">Efectos en<br>la Salud</span>
+      </button>
+      <button class="nav-btn" style="--c:#4caf50" onclick="go('screen-escala')">
+        <span class="nav-btn-icon">📊</span>
+        <span class="nav-btn-label">Escala del<br>Índice UV</span>
+      </button>
+      <button class="nav-btn" style="--c:#00d4ba" onclick="go('screen-datos')">
+        <span class="nav-btn-icon">💡</span>
+        <span class="nav-btn-label">Datos que<br>no sabías</span>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════ SCREEN: ¿QUÉ SON? ══════════ -->
+  <div class="screen info-screen" id="screen-que">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="screen-label">01 / 05</span>
+    </div>
+    <div class="info-body">
+
+      <div>
+        <div class="gfx-title">¿QUÉ SON<br><span>LOS RAYOS UV?</span></div>
+        <div class="gfx-subtitle">Radiación Electromagnética Invisible</div>
+      </div>
+
+      <!-- Wave visual -->
+      <div class="wave-visual">
+        <svg class="wave-svg" viewBox="0 0 400 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#7b00ff" stop-opacity=".8"/>
+              <stop offset="50%" stop-color="#c060ff" stop-opacity=".6"/>
+              <stop offset="100%" stop-color="#ff9030" stop-opacity=".4"/>
+            </linearGradient>
+          </defs>
+          <polyline fill="none" stroke="url(#wg)" stroke-width="2"
+            points="0,40 15,20 30,40 45,60 60,40 75,20 90,40 105,60 120,40 135,20 150,40 165,60 180,40 195,20 210,40 225,60 240,40 255,25 270,40 285,55 300,40 315,28 330,40 345,52 360,40 375,30 390,40 400,35"/>
+          <text x="10" y="72" font-family="'Barlow Condensed'" font-size="9" fill="rgba(180,120,255,.5)" letter-spacing="2">LONGITUD DE ONDA: 100–400 nm</text>
+        </svg>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:#c060ff;">🔬 Definición</div>
+        <div class="card-text">
+          Son ondas de energía emitidas por el sol que no podemos ver ni sentir. Viajan a la velocidad de la luz y al llegar a nuestra piel, interactúan con las células causando cambios a nivel del ADN.
+        </div>
+      </div>
+
+      <!-- Spectrum -->
+      <div>
+        <div style="font-family:'Barlow Condensed'; font-size:11px; letter-spacing:2px; color:#7040a0; text-transform:uppercase; margin-bottom:8px;">Espectro Electromagnético</div>
+        <div class="spectrum-bar">
+          <div class="spectrum-marker" style="left:5%;" data-label="Rayos X"></div>
+          <div class="spectrum-marker" style="left:28%; background:#bf5fff;" data-label="UV"></div>
+          <div class="spectrum-marker" style="left:55%; background:#ffe566;" data-label="Visible"></div>
+          <div class="spectrum-marker" style="left:82%; background:#ff6b00;" data-label="Infrarrojo"></div>
+        </div>
+        <div style="height:30px;"></div>
+      </div>
+
+      <div class="card" style="background:rgba(180,80,255,.07); border-color:rgba(180,80,255,.2);">
+        <div class="card-title" style="color:#a060e0;">⚡ ¿Por qué son peligrosos?</div>
+        <div class="card-text">Su energía es suficientemente alta para romper los enlaces químicos del ADN. Cada exposición acumula daño que el cuerpo no siempre puede reparar por completo.</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════ SCREEN: TIPOS ══════════ -->
+  <div class="screen info-screen" id="screen-tipos">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="screen-label">02 / 05</span>
+    </div>
+    <div class="info-body">
+
+      <div>
+        <div class="gfx-title">TIPOS DE<br><span>RADIACIÓN UV</span></div>
+        <div class="gfx-subtitle">Tres categorías, distintos efectos</div>
+      </div>
+
+      <!-- Ozone visual -->
+      <div class="ozone-visual">
+        <span class="ozone-arrow" style="color:#f5a800;">☀️</span>
+        <div class="ozone-layer"></div>
+        <span class="ozone-label">CAPA DE OZONO</span>
+        <span class="ozone-arrow">🌍</span>
+      </div>
+      <div style="font-family:'Barlow'; font-size:11px; color:#604860; text-align:center; letter-spacing:1px;">La capa de ozono filtra la mayor parte de la radiación UV</div>
+
+      <div class="type-big" style="--c:#a060ff; background:rgba(100,30,200,.1); border:1px solid rgba(100,30,200,.22);">
+        <div class="type-big-letter">A</div>
+        <div class="type-big-name">UVA</div>
+        <div class="type-big-range">320 – 400 nanómetros</div>
+        <div class="type-big-text">Penetra profundo hasta la dermis. Causa envejecimiento prematuro y daño crónico. Presente todos los días del año, incluso con nubes.</div>
+        <span class="type-big-tag">95% llega a la Tierra</span>
+      </div>
+
+      <div class="type-big" style="--c:#ff9030; background:rgba(200,100,0,.08); border:1px solid rgba(200,100,0,.2);">
+        <div class="type-big-letter">B</div>
+        <div class="type-big-name">UVB</div>
+        <div class="type-big-range">290 – 320 nanómetros</div>
+        <div class="type-big-text">Afecta la capa superficial. Causa quemaduras y es el principal agente detrás del cáncer de piel. También activa la vitamina D.</div>
+        <span class="type-big-tag">5% llega a la Tierra</span>
+      </div>
+
+      <div class="type-big" style="--c:#00d4ba; background:rgba(0,180,160,.07); border:1px solid rgba(0,180,160,.18);">
+        <div class="type-big-letter">C</div>
+        <div class="type-big-name">UVC</div>
+        <div class="type-big-range">100 – 290 nanómetros</div>
+        <div class="type-big-text">El más dañino. La capa de ozono lo bloquea completamente. Solo existe en fuentes artificiales como lámparas esterilizadoras.</div>
+        <span class="type-big-tag">Bloqueado 100% por ozono</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════ SCREEN: EFECTOS ══════════ -->
+  <div class="screen info-screen" id="screen-efectos">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="screen-label">03 / 05</span>
+    </div>
+    <div class="info-body">
+
+      <div>
+        <div class="gfx-title">EFECTOS EN<br><span>LA SALUD</span></div>
+        <div class="gfx-subtitle">Del daño inmediato al crónico</div>
+      </div>
+
+      <!-- Skin layers -->
+      <div class="skin-visual">
+        <div class="skin-layer" style="background:#c8705044; color:#c8a090;">Epidermis — UVB actúa aquí (quemaduras)</div>
+        <div class="skin-layer" style="background:#a05030aa; color:#e0a080;">Dermis — UVA llega aquí (envejecimiento)</div>
+      </div>
+
+      <div class="effect-card">
+        <div class="effect-icon-big">🔥</div>
+        <div class="effect-info">
+          <div class="effect-name-big">Quemaduras</div>
+          <div class="effect-desc-sm">Inflamación aguda causada por UVB. Aparece horas después de la exposición. La piel roja y con ampollas es una señal de daño celular.</div>
+        </div>
+      </div>
+
+      <div class="effect-card">
+        <div class="effect-icon-big">🧬</div>
+        <div class="effect-info">
+          <div class="effect-name-big">Cáncer de Piel</div>
+          <div class="effect-desc-sm">La UV daña el ADN celular. Cuando las células no reparan ese daño, se vuelven cancerosas. El melanoma puede ser fatal.</div>
+        </div>
+      </div>
+
+      <div class="effect-card">
+        <div class="effect-icon-big">👁️</div>
+        <div class="effect-info">
+          <div class="effect-name-big">Daño Ocular</div>
+          <div class="effect-desc-sm">Cataratas y fotoqueratitis (quemadura de córnea). Los ojos no tienen mecanismo de bronceado para protegerse.</div>
+        </div>
+      </div>
+
+      <div class="effect-card">
+        <div class="effect-icon-big">🧓</div>
+        <div class="effect-info">
+          <div class="effect-name-big">Fotoenvejecimiento</div>
+          <div class="effect-desc-sm">UVA degrada el colágeno. El resultado: arrugas, manchas y piel flácida antes de tiempo. Es el "envejecimiento del sol".</div>
+        </div>
+      </div>
+
+      <div class="positive-card">
+        <div class="positive-icon">☀️</div>
+        <div class="positive-text"><strong style="color:#80d0a0;">Efecto positivo:</strong> Dosis bajas de UVB activan la síntesis de vitamina D, esencial para los huesos y el sistema inmune.</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════ SCREEN: ESCALA UV ══════════ -->
+  <div class="screen info-screen" id="screen-escala">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="screen-label">04 / 05</span>
+    </div>
+    <div class="info-body">
+
+      <div>
+        <div class="gfx-title">ESCALA DEL<br><span>ÍNDICE UV</span></div>
+        <div class="gfx-subtitle">Sistema oficial de la OMS / WHO</div>
+      </div>
+
+      <!-- Meter -->
+      <div>
+        <div class="uv-meter">
+          <div class="uv-meter-needle" id="needle"></div>
+          <div class="uv-meter-labels">
+            <span class="uv-meter-label">1</span>
+            <span class="uv-meter-label">3</span>
+            <span class="uv-meter-label">6</span>
+            <span class="uv-meter-label">8</span>
+            <span class="uv-meter-label">11+</span>
+          </div>
+        </div>
+        <div style="font-family:'Barlow Condensed'; font-size:10px; letter-spacing:2px; color:#504060; text-align:center; margin-top:6px; text-transform:uppercase;">Toca cada nivel para ver el detalle</div>
+      </div>
+
+      <div class="scale-item" onclick="movNeedle('2%')" style="cursor:pointer;">
+        <div class="scale-color-bar" style="--c:#4caf50;"></div>
+        <div class="scale-body">
+          <div class="scale-level-name" style="--c:#4caf50;">Bajo</div>
+          <div class="scale-range-txt">Índice 0 – 2</div>
+          <div class="scale-rec-txt">Sin riesgo significativo. Protección básica recomendada.</div>
+        </div>
+        <div class="scale-emoji">😎</div>
+      </div>
+
+      <div class="scale-item" onclick="movNeedle('22%')" style="cursor:pointer;">
+        <div class="scale-color-bar" style="--c:#ffeb3b;"></div>
+        <div class="scale-body">
+          <div class="scale-level-name" style="--c:#d4cc00;">Moderado</div>
+          <div class="scale-range-txt">Índice 3 – 5</div>
+          <div class="scale-rec-txt">Usa bloqueador SPF 30+ y lentes de sol.</div>
+        </div>
+        <div class="scale-emoji">🧴</div>
+      </div>
+
+      <div class="scale-item" onclick="movNeedle('50%')" style="cursor:pointer;">
+        <div class="scale-color-bar" style="--c:#ff9800;"></div>
+        <div class="scale-body">
+          <div class="scale-level-name" style="--c:#ff9800;">Alto</div>
+          <div class="scale-range-txt">Índice 6 – 7</div>
+          <div class="scale-rec-txt">Reduce exposición al mediodía. SPF 50+.</div>
+        </div>
+        <div class="scale-emoji">👒</div>
+      </div>
+
+      <div class="scale-item" onclick="movNeedle('72%')" style="cursor:pointer;">
+        <div class="scale-color-bar" style="--c:#f44336;"></div>
+        <div class="scale-body">
+          <div class="scale-level-name" style="--c:#f44336;">Muy Alto</div>
+          <div class="scale-range-txt">Índice 8 – 10</div>
+          <div class="scale-rec-txt">Evita el sol entre 10 am y 4 pm. Busca sombra.</div>
+        </div>
+        <div class="scale-emoji">🛑</div>
+      </div>
+
+      <div class="scale-item" onclick="movNeedle('90%')" style="cursor:pointer;">
+        <div class="scale-color-bar" style="--c:#9c27b0;"></div>
+        <div class="scale-body">
+          <div class="scale-level-name" style="--c:#c060ff;">Extremo</div>
+          <div class="scale-range-txt">Índice 11+</div>
+          <div class="scale-rec-txt">¡Peligro! Quemaduras en minutos. Permanecer bajo techo.</div>
+        </div>
+        <div class="scale-emoji">☢️</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════ SCREEN: DATOS CURIOSOS ══════════ -->
+  <div class="screen info-screen" id="screen-datos">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">← Volver</button>
+      <span class="screen-label">05 / 05</span>
+    </div>
+    <div class="info-body">
+
+      <div>
+        <div class="gfx-title">DATOS QUE<br><span>NO SABÍAS</span></div>
+        <div class="gfx-subtitle">La radiación UV tiene secretos</div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-num">01</div>
+        <div class="fact-content">
+          <div class="fact-headline">☁️ Las nubes no te salvan</div>
+          <div class="fact-detail">Hasta el <span class="fact-highlight">80% de la radiación UV</span> pasa a través de las nubes. Un día nublado no significa un día sin riesgo.</div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-num">02</div>
+        <div class="fact-content">
+          <div class="fact-headline">🏖️ Superficies que amplifican</div>
+          <div class="fact-detail">La arena refleja hasta un <span class="fact-highlight">25%</span>, la nieve hasta un <span class="fact-highlight">80%</span> y el agua hasta un <span class="fact-highlight">10%</span> de los rayos UV hacia tu piel.</div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-num">03</div>
+        <div class="fact-content">
+          <div class="fact-headline">🚗 El vidrio no bloquea todo</div>
+          <div class="fact-detail">Los cristales de ventana <span class="fact-highlight">bloquean UVB pero no UVA</span>. Manejar horas sin protección daña tu piel aunque estés "adentro".</div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-num">04</div>
+        <div class="fact-content">
+          <div class="fact-headline">👶 El daño comienza de niño</div>
+          <div class="fact-detail">El daño UV es <span class="fact-highlight">acumulativo de por vida</span>. Las quemaduras en la infancia y adolescencia aumentan significativamente el riesgo de cáncer en la adultez.</div>
+        </div>
+      </div>
+
+      <div class="fact-card">
+        <div class="fact-num">05</div>
+        <div class="fact-content">
+          <div class="fact-headline">🇲🇽 México en zona de riesgo</div>
+          <div class="fact-detail">Por su latitud, México recibe uno de los índices UV más altos del mundo, especialmente entre <span class="fact-highlight">marzo y octubre</span>, cuando puede superar nivel 11.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let current = 'main';
+
+  function go(id) {
+    const from = document.getElementById(current);
+    const to   = document.getElementById(id);
+    from.classList.add('exit');
+    setTimeout(() => { from.classList.remove('active','exit'); }, 350);
+    to.style.transform = 'translateX(30px)';
+    to.classList.add('active');
+    requestAnimationFrame(() => { to.style.transform = ''; });
+    current = id;
+    to.scrollTop = 0;
+  }
+
+  function goBack() {
+    go('main');
+  }
+
+  function movNeedle(pos) {
+    document.getElementById('needle').style.left = pos;
+  }
+
+  // animate needle on load of escala screen
+  document.getElementById('screen-escala').addEventListener('transitionend', function(e) {
+    if (e.propertyName === 'opacity' && this.classList.contains('active')) {
+      setTimeout(() => movNeedle('82%'), 300);
+    }
+  });
+</script>
+</body>
+</html>
